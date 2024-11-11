@@ -1,21 +1,11 @@
 # deno sveltekit repro
 
 ## Setup
-```
+```bash
 git clone git@github.com:andykais/sveltekit-deno-build-bug-repro.git
 cd sveltekit-deno-build-bug-repro
-deno task build
-```
-
-## Relevant versions
-npm packages:
-- `@sveltejs/kit`: `^2.0.0`
-- `svelte`: `^5.0.0`
-deno --version output:
-```
-deno 2.0.6 (stable, release, aarch64-apple-darwin)
-v8 12.9.202.13-rusty
-typescript 5.6.2
+deno run --check npm:vite build
+# observe the error below
 ```
 
 ## `deno task build` output
@@ -70,4 +60,78 @@ error: Uncaught (in promise) Error: Unhandled error. ([Object: null prototype] {
     at NodeWorker.#handleError (node:worker_threads:117:10)
     at NodeWorker.#pollControl (node:worker_threads:137:30)
     at eventLoopTick (ext:core/01_core.js:175:7)
+```
+
+
+## Relevant versions
+npm packages:
+- `@sveltejs/kit`: `^2.0.0`
+- `svelte`: `^5.0.0`
+deno --version output:
+```
+deno 2.0.6 (stable, release, aarch64-apple-darwin)
+v8 12.9.202.13-rusty
+typescript 5.6.2
+```
+
+## Bug details
+This issue occurs because deno is attempting to type check the ./build/server/index.js file, which is auto generated from the sveltekit vite plugin. It has a tsdoc comment referencing a file that does not exist. Specifically this snippet:
+```ts
+function normalize_error(error) {
+  return (
+    /** @type {import('../runtime/control.js').Redirect | HttpError | SvelteKitError | Error} */
+    error
+  );
+}
+```
+
+Where the actual contents of `.svelte-kit/output/` look like so:
+```
+.svelte-kit/output/
+├── client
+│   ├── _app
+│   │   ├── immutable
+│   │   │   ├── assets
+│   │   │   │   ├── 0.BpAVHVrk.css
+│   │   │   │   └── _layout.BpAVHVrk.css
+│   │   │   ├── chunks
+│   │   │   │   ├── disclose-version.CowVcU60.js
+│   │   │   │   ├── entry.Bx1TeVsI.js
+│   │   │   │   ├── legacy.Cfq4znBK.js
+│   │   │   │   ├── runtime.BImtrf0m.js
+│   │   │   │   └── store.DppMPHr-.js
+│   │   │   ├── entry
+│   │   │   │   ├── app.NmgAdrda.js
+│   │   │   │   └── start.W-lKSCpI.js
+│   │   │   └── nodes
+│   │   │       ├── 0.B6xiVdza.js
+│   │   │       ├── 1.P3xQ9uiT.js
+│   │   │       └── 2.-L_wGNEL.js
+│   │   └── version.json
+│   └── favicon.png
+└── server
+    ├── _app
+    │   └── immutable
+    │       └── assets
+    │           └── _layout.BpAVHVrk.css
+    ├── chunks
+    │   ├── exports.js
+    │   ├── index.js
+    │   └── internal.js
+    ├── entries
+    │   ├── fallbacks
+    │   │   └── error.svelte.js
+    │   └── pages
+    │       ├── _layout.svelte.js
+    │       └── _page.svelte.js
+    ├── index.js
+    ├── internal.js
+    ├── manifest-full.js
+    ├── nodes
+    │   ├── 0.js
+    │   ├── 1.js
+    │   └── 2.js
+    └── stylesheets
+
+18 directories, 27 files
 ```
